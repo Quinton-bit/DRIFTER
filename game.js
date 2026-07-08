@@ -185,7 +185,15 @@ for (let i = 0; i < 80; i++) {
   for (let island of islands) {
     ctx.fillStyle = island.color;
     ctx.beginPath();
-    ctx.ellipse(island.x, island.y, island.w, island.h, 0, 0, Math.PI * 2);
+    ctx.ellipse(
+      island.x,
+      island.y,
+      island.w * scale,
+      island.h * scale,
+      0,
+      0,
+      Math.PI * 2
+    );
     ctx.fill();
   }
 // STARS
