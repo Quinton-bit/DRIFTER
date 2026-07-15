@@ -7,6 +7,45 @@ canvas.height = window.innerHeight;
 const GRAVITY = 0.4;
 const GROUND_HEIGHT = 120;
 
+// GAME STATE
+let gameState = "start"; // "start", "play", "gameover"
+let score = 0;
+let worldSpeed = 3;
+let difficultyTimer = 0;
+
+// INPUT
+let keys = {};
+window.addEventListener("keydown", e => {
+  keys[e.key] = true;
+
+  if (gameState === "start" && e.key === " ") {
+    startGame();
+  } else if (gameState === "gameover" && e.key === " ") {
+    restartGame();
+  }
+});
+window.addEventListener("keyup", e => keys[e.key] = false);
+
+// START / RESTART
+function startGame() {
+  gameState = "play";
+  score = 0;
+  worldSpeed = 3;
+  difficultyTimer = 0;
+}
+
+function restartGame() {
+  player.x = spawnPoint.x;
+  player.y = spawnPoint.y;
+  player.vx = 0;
+  player.vy = 0;
+  player.onGround = false;
+  obstacles = [];
+  particles = [];
+  startGame();
+}
+
+// PLAYER
 let spawnPoint = {
   x: canvas.width / 2,
   y: canvas.height - GROUND_HEIGHT - 50
@@ -22,18 +61,8 @@ let player = {
   size: 20,
   onGround: false
 };
-let gameState = "start"; // "start" or "play"
 
-
-let keys = {};
-window.addEventListener("keydown", e => keys[e.key] = true);
-window.addEventListener("keyup", e => keys[e.key] = false);
-window.addEventListener("keydown", () => {
-  if (gameState === "start") {
-    gameState = "play";
-  }
-});
-
+// BACKGROUND OBJECTS
 let stars = [];
 for (let i = 0; i < 80; i++) {
   stars.push({
@@ -67,7 +96,32 @@ let islands = [
   { x: 1200, y: 250, w: 180, h: 100, color: "#6fa8dc" }
 ];
 
+// OBSTACLES
+let obstacles = [];
+
+function spawnObstacle() {
+  const groundY = canvas.height - GROUND_HEIGHT;
+  const w = 40 + Math.random() * 40;
+  const h = 40 + Math.random() * 30;
+
+  obstacles.push({
+    x: canvas.width + w,
+    y: groundY - h,
+    w,
+    h,
+    color: "#c2410c"
+  });
+}
+
+// PARTICLES (placeholder for next step)
+let particles = [];
+
+// UPDATE LOOP
 function update() {
+  updateBackground();
+
+  if (gameState !== "play") return;
+
   // gravity + movement
   player.vy += GRAVITY;
 
@@ -90,7 +144,28 @@ function update() {
     player.onGround = true;
   }
 
-  // stars movement
+  // keep player on screen
+  if (player.x < 40) player.x = 40;
+  if (player.x > canvas.width - 40) player.x = canvas.width - 40;
+
+  // difficulty scaling
+  difficultyTimer += 1;
+  if (difficultyTimer % 180 === 0) {
+    worldSpeed += 0.4;
+  }
+
+  // spawn obstacles
+  if (Math.random() < 0.02) {
+    spawnObstacle();
+  }
+
+  updateObstacles();
+
+  score += 0.1;
+}
+
+// BACKGROUND UPDATE
+function updateBackground() {
   for (let s of stars) {
     s.x += s.speed;
     if (s.x > canvas.width) {
@@ -99,15 +174,11 @@ function update() {
     }
   }
 
-  // parallax mist movement
   for (let layer of parallaxLayers) {
     layer.offset += layer.speed;
-    if (layer.offset > canvas.width) {
-      layer.offset = 0;
-    }
+    if (layer.offset > canvas.width) layer.offset = 0;
   }
 
-  // clouds
   for (let cloud of clouds) {
     cloud.x += cloud.speed;
     if (cloud.x > canvas.width + cloud.w) {
@@ -116,25 +187,28 @@ function update() {
     }
   }
 
-  // islands drift
   for (let island of islands) {
     island.x += Math.sin(Date.now() / 2000) * 0.1;
   }
 }
 
-
+// DRAW PLAYER
 function drawPlayer() {
   ctx.save();
 
   ctx.fillStyle = "#a03320";
+
+  // body
   ctx.beginPath();
   ctx.ellipse(player.x, player.y, 20, 14, 0, 0, Math.PI * 2);
   ctx.fill();
 
+  // head
   ctx.beginPath();
   ctx.ellipse(player.x, player.y - 18, 14, 12, 0, 0, Math.PI * 2);
   ctx.fill();
 
+  // ears
   ctx.beginPath();
   ctx.moveTo(player.x - 10, player.y - 22);
   ctx.lineTo(player.x - 4, player.y - 32);
@@ -150,6 +224,7 @@ function drawPlayer() {
   ctx.restore();
 }
 
+// DRAW EVERYTHING
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -178,7 +253,7 @@ function draw() {
     ctx.fill();
   }
 
-  // islands with depth scale
+  // islands
   for (let island of islands) {
     ctx.fillStyle = island.color;
     let depthScale = island.y / canvas.height;
@@ -205,7 +280,13 @@ function draw() {
     ctx.fill();
   }
 
-  // player shadow
+  // obstacles
+  for (let o of obstacles) {
+    ctx.fillStyle = o.color;
+    ctx.fillRect(o.x, o.y, o.w, o.h);
+  }
+
+  // shadow
   ctx.fillStyle = "rgba(0,0,0,0.3)";
   ctx.beginPath();
   ctx.ellipse(
@@ -221,8 +302,55 @@ function draw() {
 
   // player
   drawPlayer();
+
+  // UI
+  ctx.fillStyle = "#e5e7eb";
+  ctx.font = "20px system-ui, sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText("Score: " + Math.floor(score), 30, 40);
+
+  ctx.textAlign = "center";
+  ctx.font = "28px system-ui, sans-serif";
+
+  if (gameState === "start") {
+    ctx.fillText("DRIFTER: QUIET HORIZONS", canvas.width / 2, canvas.height / 2 - 40);
+    ctx.font = "20px system-ui, sans-serif";
+    ctx.fillText("Press SPACE to begin", canvas.width / 2, canvas.height / 2 + 10);
+    ctx.fillText("W to jump, A/D to move", canvas.width / 2, canvas.height / 2 + 40);
+  } else if (gameState === "gameover") {
+    ctx.fillText("You drifted: " + Math.floor(score) + " m", canvas.width / 2, canvas.height / 2 - 10);
+    ctx.font = "20px system-ui, sans-serif";
+    ctx.fillText("Press SPACE to try again", canvas.width / 2, canvas.height / 2 + 30);
+  }
 }
 
+// OBSTACLE UPDATE
+function updateObstacles() {
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    const o = obstacles[i];
+    o.x -= worldSpeed;
+
+    if (o.x + o.w < 0) {
+      obstacles.splice(i, 1);
+      continue;
+    }
+
+    const px = player.x;
+    const py = player.y;
+    const pr = player.size;
+
+    if (
+      px + pr > o.x &&
+      px - pr < o.x + o.w &&
+      py + pr > o.y &&
+      py - pr < o.y + o.h
+    ) {
+      gameState = "gameover";
+    }
+  }
+}
+
+// GAME LOOP
 function gameLoop() {
   update();
   draw();
