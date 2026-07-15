@@ -7,3 +7,39 @@ body {
 #gameCanvas {
   display: block;
 }
+.bg-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-size: 200% 200%;
+  opacity: 0.35;
+}
+
+#bg-layer-1 {
+  background-image: radial-gradient(circle at 20% 30%, #3b5bff40 0, transparent 60%);
+  animation: drift1 40s linear infinite;
+}
+
+#bg-layer-2 {
+  background-image: radial-gradient(circle at 70% 60%, #7f9bff30 0, transparent 65%);
+  animation: drift2 60s linear infinite;
+}
+
+#bg-layer-3 {
+  background-image: radial-gradient(circle at 40% 80%, #ffffff10 0, transparent 70%);
+  animation: drift3 80s linear infinite;
+}
+
+@keyframes drift1 {
+  from { background-position: 0% 0%; }
+  to   { background-position: 100% 100%; }
+}
+@keyframes drift2 {
+  from { background-position: 100% 0%; }
+  to   { background-position: 0% 100%; }
+}
+@keyframes drift3 {
+  from { background-position: 50% 100%; }
+  to   { background-position: 0% 0%; }
+}
