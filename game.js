@@ -223,6 +223,11 @@ function drawPlayer() {
 
   ctx.restore();
 }
+let scale = 1 + Math.sin(Date.now() / 100) * 0.05;
+ctx.scale(scale, 1);
+
+player.yBase = player.y;
+player.y = player.yBase + Math.sin(Date.now() / 200) * 2;
 
 // DRAW EVERYTHING
 function draw() {
@@ -322,7 +327,39 @@ function draw() {
     ctx.font = "20px system-ui, sans-serif";
     ctx.fillText("Press SPACE to try again", canvas.width / 2, canvas.height / 2 + 30);
   }
+}function drawPlayer() {
+  // SHADOW
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
+  ctx.beginPath();
+  ctx.ellipse(player.x, player.y + 20, 20, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // GLOW
+  ctx.shadowColor = "#ffa866";
+  ctx.shadowBlur = 25;
+
+  // BODY
+  ctx.fillStyle = "#ff8c42";
+  ctx.beginPath();
+  ctx.ellipse(player.x, player.y, 25, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.shadowBlur = 0;
+
+  // OUTLINE
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // TAIL
+  ctx.fillStyle = "#ffb46a";
+  ctx.beginPath();
+  ctx.ellipse(player.x - 25, player.y + 5, 18, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
 }
+player.yBase = player.y;
+player.y = player.yBase + Math.sin(Date.now() / 200) * 2;
+
 
 // OBSTACLE UPDATE
 function updateObstacles() {
