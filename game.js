@@ -38,6 +38,10 @@ function restartGame() {
   player.vy = 0;
   player.onGround = false;
   obstacles = [];
+  creatures = [];
+  guardians = [];
+  spawnCreatures();
+  spawnGuardian();
   startGame();
 }
 
@@ -56,10 +60,46 @@ let player = {
   friction: 0.90,
   size: 20,
   onGround: false,
-
-  // FIXED HITBOX (matches fox model)
   hitbox: { w: 50, h: 40 }
 };
+
+// REALMS
+let realms = [
+  {
+    name: "Neon Horizon",
+    top: "#0f1c33",
+    bottom: "#1a2a4a",
+    fog: "rgba(255,255,255,0.05)",
+    creatureType: "jellyfish",
+    guardianType: "neonFox"
+  },
+  {
+    name: "Nature Realms",
+    top: "#1a4a2a",
+    bottom: "#2e6f3a",
+    fog: "rgba(255,255,255,0.08)",
+    creatureType: "birds",
+    guardianType: "treeSpirit"
+  },
+  {
+    name: "Cosmic Drift",
+    top: "#12001a",
+    bottom: "#2a003f",
+    fog: "rgba(200,150,255,0.08)",
+    creatureType: "stars",
+    guardianType: "cosmicWhale"
+  },
+  {
+    name: "Dark Fantasy",
+    top: "#0a0a0a",
+    bottom: "#1a0f1a",
+    fog: "rgba(50,0,50,0.08)",
+    creatureType: "wisps",
+    guardianType: "shadowSentinel"
+  }
+];
+
+let currentRealm = 0;
 
 // BACKGROUND OBJECTS
 let stars = [];
@@ -71,11 +111,6 @@ for (let i = 0; i < 80; i++) {
     speed: 0.01
   });
 }
-
-let parallaxLayers = [
-  { speed: 0.01, color: "rgba(255,255,255,0.05)", offset: 0 },
-  { speed: 0.03, color: "rgba(255,255,255,0.08)", offset: 0 }
-];
 
 let clouds = [];
 for (let i = 0; i < 6; i++) {
@@ -90,9 +125,9 @@ for (let i = 0; i < 6; i++) {
 }
 
 let islands = [
-  { x: 300, y: 200, w: 200, h: 120, color: "#4a6fa5" },
-  { x: 800, y: 400, w: 250, h: 150, color: "#5b8bbd" },
-  { x: 1200, y: 250, w: 180, h: 100, color: "#6fa8dc" }
+  { x: 300, y: 200, w: 200, h: 120 },
+  { x: 800, y: 400, w: 250, h: 150 },
+  { x: 1200, y: 250, w: 180, h: 100 }
 ];
 
 // OBSTACLES
@@ -103,219 +138,198 @@ function spawnObstacle() {
   const w = 40 + Math.random() * 40;
   const h = 40 + Math.random() * 30;
 
+  const moving = Math.random() < 0.4;
+
   obstacles.push({
     x: canvas.width + w,
     y: groundY - h,
     w,
-    h
+    h,
+    vx: moving ? (Math.random() * 2 + 1) : 0,
+    type: moving ? "moving" : "static"
   });
 }
 
-// UPDATE LOOP
-function update() {
-  updateBackground();
+// PARTICLES (misty dust)
+let particles = [];
 
-  if (gameState !== "play") return;
-
-  // gravity + movement
-  player.vy += GRAVITY;
-
-  if (keys["a"]) player.vx -= player.speed;
-  if (keys["d"]) player.vx += player.speed;
-
-  if (keys["w"] && player.onGround) {
-    player.vy = -10;
-    player.onGround = false;
-  }
-
-  player.vx *= player.friction;
-  player.x += player.vx;
-  player.y += player.vy;
-
-  let groundY = canvas.height - GROUND_HEIGHT;
-  if (player.y + player.size > groundY) {
-    player.y = groundY - player.size;
-    player.vy = 0;
-    player.onGround = true;
-  }
-
-  // keep player on screen
-  if (player.x < 40) player.x = 40;
-  if (player.x > canvas.width - 40) player.x = canvas.width - 40;
-
-  // difficulty scaling
-  difficultyTimer += 1;
-  if (difficultyTimer % 180 === 0) worldSpeed += 0.4;
-
-  // spawn obstacles
-  if (Math.random() < 0.02) spawnObstacle();
-
-  updateObstacles();
-
-  score += 0.1;
+function spawnParticle() {
+  particles.push({
+    x: player.x - 10,
+    y: player.y + 10,
+    vx: (Math.random() - 0.5) * 0.5,
+    vy: Math.random() * -0.5,
+    size: Math.random() * 3 + 1,
+    alpha: 1
+  });
 }
 
-// BACKGROUND UPDATE
-function updateBackground() {
-  for (let s of stars) {
-    s.x += s.speed;
-    if (s.x > canvas.width) {
-      s.x = 0;
-      s.y = Math.random() * canvas.height;
-    }
-  }
+// CREATURES (ambient)
+let creatures = [];
 
-  for (let layer of parallaxLayers) {
-    layer.offset += layer.speed;
-    if (layer.offset > canvas.width) layer.offset = 0;
-  }
+function spawnCreatures() {
+  creatures = [];
+  let realm = realms[currentRealm];
 
-  for (let cloud of clouds) {
-    cloud.x += cloud.speed;
-    if (cloud.x > canvas.width + cloud.w) {
-      cloud.x = -cloud.w;
-      cloud.y = Math.random() * canvas.height;
-    }
-  }
+  let count = 8; // medium amount
 
-  for (let island of islands) {
-    island.x += Math.sin(Date.now() / 2000) * 0.1;
+  for (let i = 0; i < count; i++) {
+    creatures.push({
+      type: realm.creatureType,
+      x: Math.random() * canvas.width,
+      y: Math.random() * (canvas.height - 200),
+      vx: (Math.random() - 0.5) * 0.5,
+      vy: (Math.random() - 0.5) * 0.5,
+      size: 20 + Math.random() * 20
+    });
   }
 }
 
-// 2.5D PLAYER MODEL
-function drawPlayer() {
+// GUARDIANS (peaceful bosses)
+let guardians = [];
+
+function spawnGuardian() {
+  guardians = [];
+  let realm = realms[currentRealm];
+
+  guardians.push({
+    type: realm.guardianType,
+    x: canvas.width / 2,
+    y: canvas.height / 2 - 100,
+    size: 80, // medium guardian
+    floatOffset: Math.random() * 100
+  });
+}
+// DRAW CREATURES (ambient)
+function drawCreature(c) {
   ctx.save();
+  ctx.translate(c.x, c.y);
 
-  let bob = Math.sin(Date.now() / 200) * 2;
-  let stretch = 1 + Math.sin(Date.now() / 120) * 0.05;
+  if (c.type === "jellyfish") {
+    ctx.fillStyle = "rgba(255,150,255,0.7)";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, c.size, c.size * 0.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
-  ctx.translate(player.x, player.y + bob);
-  ctx.scale(stretch, 1);
+  if (c.type === "birds") {
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.beginPath();
+    ctx.moveTo(-c.size * 0.5, 0);
+    ctx.lineTo(0, -c.size * 0.3);
+    ctx.lineTo(c.size * 0.5, 0);
+    ctx.stroke();
+  }
 
-  // SHADOW
-  ctx.fillStyle = "rgba(0,0,0,0.3)";
-  ctx.beginPath();
-  ctx.ellipse(0, 25, 28, 10, 0, 0, Math.PI * 2);
-  ctx.fill();
+  if (c.type === "stars") {
+    ctx.fillStyle = "rgba(200,150,255,0.9)";
+    ctx.beginPath();
+    ctx.arc(0, 0, c.size * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
-  // GLOW
-  ctx.shadowColor = "#ffa866";
-  ctx.shadowBlur = 25;
-
-  // BODY
-  ctx.fillStyle = "#ff8c42";
-  ctx.beginPath();
-  ctx.ellipse(0, 0, 25, 18, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.shadowBlur = 0;
-
-  // OUTLINE
-  ctx.strokeStyle = "#000";
-  ctx.lineWidth = 3;
-  ctx.stroke();
-
-  // HEAD
-  ctx.fillStyle = "#ff8c42";
-  ctx.beginPath();
-  ctx.ellipse(0, -22, 16, 14, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // EARS
-  ctx.beginPath();
-  ctx.moveTo(-10, -28);
-  ctx.lineTo(-4, -40);
-  ctx.lineTo(2, -28);
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.moveTo(10, -28);
-  ctx.lineTo(4, -40);
-  ctx.lineTo(-2, -28);
-  ctx.fill();
-
-  // TAIL
-  ctx.fillStyle = "#ffb46a";
-  ctx.beginPath();
-  ctx.ellipse(-30, 5, 20, 12, 0, 0, Math.PI * 2);
-  ctx.fill();
+  if (c.type === "wisps") {
+    ctx.fillStyle = "rgba(80,0,80,0.5)";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, c.size * 0.4, c.size * 0.7, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   ctx.restore();
 }
 
-// 2.5D OBSTACLE DRAW
-function drawObstacle(o) {
+// DRAW GUARDIANS (peaceful bosses)
+function drawGuardian(g) {
   ctx.save();
+  ctx.translate(g.x, g.y + Math.sin(Date.now() / 1000 + g.floatOffset) * 10);
 
-  // Depth shadow
-  ctx.fillStyle = "rgba(0,0,0,0.4)";
-  ctx.fillRect(o.x + 10, o.y + o.h, o.w, 10);
+  if (g.type === "neonFox") {
+    ctx.fillStyle = "rgba(255,150,80,0.8)";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, g.size, g.size * 0.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
-  // Main body
-  ctx.fillStyle = "#3a4a63";
-  ctx.fillRect(o.x, o.y, o.w, o.h);
+  if (g.type === "treeSpirit") {
+    ctx.fillStyle = "rgba(80,150,80,0.8)";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, g.size * 0.8, g.size, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
-  // Outline
-  ctx.strokeStyle = "#000";
-  ctx.lineWidth = 3;
-  ctx.strokeRect(o.x, o.y, o.w, o.h);
+  if (g.type === "cosmicWhale") {
+    ctx.fillStyle = "rgba(150,80,255,0.7)";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, g.size * 1.5, g.size * 0.7, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
-  // Top highlight
-  ctx.fillStyle = "rgba(255,255,255,0.15)";
-  ctx.fillRect(o.x, o.y, o.w, 8);
+  if (g.type === "shadowSentinel") {
+    ctx.fillStyle = "rgba(40,0,40,0.7)";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, g.size * 0.5, g.size * 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   ctx.restore();
 }
 
-// OBSTACLE UPDATE + FIXED COLLISION
-function updateObstacles() {
-  for (let i = obstacles.length - 1; i >= 0; i--) {
-    const o = obstacles[i];
-    o.x -= worldSpeed;
+// UPDATE CREATURES
+function updateCreatures() {
+  for (let c of creatures) {
+    c.x += c.vx;
+    c.y += c.vy;
 
-    if (o.x + o.w < 0) {
-      obstacles.splice(i, 1);
-      continue;
-    }
-
-    // FIXED HITBOX COLLISION
-    const px = player.x - player.hitbox.w / 2;
-    const py = player.y - player.hitbox.h / 2;
-    const pw = player.hitbox.w;
-    const ph = player.hitbox.h;
-
-    if (
-      px < o.x + o.w &&
-      px + pw > o.x &&
-      py < o.y + o.h &&
-      py + ph > o.y
-    ) {
-      gameState = "gameover";
-    }
+    if (c.x < -50) c.x = canvas.width + 50;
+    if (c.x > canvas.width + 50) c.x = -50;
+    if (c.y < 50) c.y = canvas.height - 200;
+    if (c.y > canvas.height - 200) c.y = 50;
   }
 }
+
+// UPDATE PARTICLES
+function updateParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    let p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.alpha -= 0.02;
+
+    if (p.alpha <= 0) particles.splice(i, 1);
+  }
+}
+
+// DRAW PARTICLES
+function drawParticles() {
+  for (let p of particles) {
+    ctx.fillStyle = `rgba(255,255,255,${p.alpha})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// DRAW FOG LAYER
+function drawFog() {
+  let realm = realms[currentRealm];
+  ctx.fillStyle = realm.fog;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+// UPDATE OBSTACLES + REALM SWITCHING (already in PART 1)
 
 // DRAW EVERYTHING
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  let realm = realms[currentRealm];
+
   // background gradient
   let gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  gradient.addColorStop(0, "#0f1c33");
-  gradient.addColorStop(1, "#1a2a4a");
+  gradient.addColorStop(0, realm.top);
+  gradient.addColorStop(1, realm.bottom);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // parallax mist
-  for (let layer of parallaxLayers) {
-    ctx.fillStyle = layer.color;
-    ctx.fillRect(layer.offset, 0, canvas.width, canvas.height);
-  }
-
-  // ground
-  ctx.fillStyle = "#2e3b55";
-  ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, GROUND_HEIGHT);
 
   // clouds
   for (let cloud of clouds) {
@@ -327,7 +341,7 @@ function draw() {
 
   // islands
   for (let island of islands) {
-    ctx.fillStyle = island.color;
+    ctx.fillStyle = "#ffffff22";
     let depthScale = island.y / canvas.height;
     let scale = 0.6 + depthScale * 0.4;
 
@@ -352,8 +366,24 @@ function draw() {
     ctx.fill();
   }
 
+  // fog layer
+  drawFog();
+
+  // ambient creatures
+  for (let c of creatures) drawCreature(c);
+
+  // guardian
+  for (let g of guardians) drawGuardian(g);
+
+  // ground
+  ctx.fillStyle = "#2e3b55";
+  ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, GROUND_HEIGHT);
+
   // obstacles
   for (let o of obstacles) drawObstacle(o);
+
+  // particles
+  drawParticles();
 
   // player
   drawPlayer();
@@ -368,7 +398,7 @@ function draw() {
   ctx.font = "28px system-ui, sans-serif";
 
   if (gameState === "start") {
-    ctx.fillText("DRIFTER: QUIET HORIZONS", canvas.width / 2, canvas.height / 2 - 40);
+    ctx.fillText("DRIFTER: REALMS OF HORIZON", canvas.width / 2, canvas.height / 2 - 40);
     ctx.font = "20px system-ui, sans-serif";
     ctx.fillText("Press SPACE to begin", canvas.width / 2, canvas.height / 2 + 10);
     ctx.fillText("W to jump, A/D to move", canvas.width / 2, canvas.height / 2 + 40);
@@ -379,6 +409,68 @@ function draw() {
   }
 }
 
+// UPDATE EVERYTHING
+function update() {
+  updateBackground();
+
+  if (gameState !== "play") return;
+
+  // movement
+  player.vy += GRAVITY;
+
+  if (keys["a"]) player.vx -= player.speed;
+  if (keys["d"]) player.vx += player.speed;
+
+  if (keys["w"] && player.onGround) {
+    player.vy = -10;
+    player.onGround = false;
+  }
+
+  player.vx *= player.friction;
+  player.x += player.vx;
+  player.y += player.vy;
+
+  let groundY = canvas.height - GROUND_HEIGHT;
+  if (player.y + player.size > groundY) {
+    player.y = groundY - player.size;
+    player.vy = 0;
+    player.onGround = true;
+  }
+
+  // realm switching
+  if (player.x > canvas.width - 50) {
+    currentRealm = (currentRealm + 1) % realms.length;
+    player.x = 60;
+    obstacles = [];
+    spawnCreatures();
+    spawnGuardian();
+  }
+
+  if (player.x < 50) {
+    currentRealm = (currentRealm - 1 + realms.length) % realms.length;
+    player.x = canvas.width - 60;
+    obstacles = [];
+    spawnCreatures();
+    spawnGuardian();
+  }
+
+  // difficulty
+  difficultyTimer += 1;
+  if (difficultyTimer % 180 === 0) worldSpeed += 0.4;
+
+  // spawn obstacles
+  if (Math.random() < 0.02) spawnObstacle();
+
+  updateObstacles();
+  updateCreatures();
+  updateParticles();
+
+  // spawn particle trail
+  spawnParticle();
+
+  score += 0.1;
+}
+
 // GAME LOOP
 function gameLoop() {
   update();
@@ -386,4 +478,6 @@ function gameLoop() {
   requestAnimationFrame(gameLoop);
 }
 
+spawnCreatures();
+spawnGuardian();
 gameLoop();
