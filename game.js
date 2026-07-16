@@ -1,3 +1,8 @@
+/* =========================================================
+   DRIFTER: REALMS OF HORIZON
+   FULL FIXED FILE — PHASE 1 + PHASE 2
+   ========================================================= */
+
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -171,7 +176,7 @@ function spawnCreatures() {
   creatures = [];
   let realm = realms[currentRealm];
 
-  let count = 8; // medium amount
+  let count = 8;
 
   for (let i = 0; i < count; i++) {
     creatures.push({
@@ -196,11 +201,102 @@ function spawnGuardian() {
     type: realm.guardianType,
     x: canvas.width / 2,
     y: canvas.height / 2 - 100,
-    size: 80, // medium guardian
+    size: 80,
     floatOffset: Math.random() * 100
   });
 }
-// DRAW CREATURES (ambient)
+
+/* =========================================================
+   PHASE 2 — MINI-MAP
+   ========================================================= */
+
+function drawMiniMap() {
+  const mapW = 200;
+  const mapH = 120;
+  const x = canvas.width - mapW - 20;
+  const y = 20;
+
+  ctx.save();
+
+  ctx.fillStyle = "rgba(0,0,0,0.4)";
+  ctx.fillRect(x, y, mapW, mapH);
+
+  const boxW = mapW / realms.length;
+
+  for (let i = 0; i < realms.length; i++) {
+    ctx.fillStyle = i === currentRealm ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.2)";
+    ctx.fillRect(x + i * boxW, y, boxW, 30);
+
+    ctx.fillStyle = "#fff";
+    ctx.font = "12px system-ui";
+    ctx.textAlign = "center";
+    ctx.fillText(realms[i].name, x + i * boxW + boxW / 2, y + 20);
+  }
+
+  ctx.fillStyle = "#ffddaa";
+  ctx.beginPath();
+  ctx.arc(x + (currentRealm + 0.5) * boxW, y + 60, 6, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#aaffff";
+  ctx.beginPath();
+  ctx.arc(x + (currentRealm + 0.5) * boxW, y + 90, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/* =========================================================
+   PHASE 2 — SAVE SYSTEM
+   ========================================================= */
+
+function saveGame() {
+  const data = {
+    realm: currentRealm,
+    score: score,
+    playerX: player.x,
+    playerY: player.y
+  };
+  localStorage.setItem("drifterSave", JSON.stringify(data));
+}
+
+function loadGame() {
+  const data = JSON.parse(localStorage.getItem("drifterSave"));
+  if (!data) return;
+
+  currentRealm = data.realm ?? 0;
+  score = data.score ?? 0;
+  player.x = data.playerX ?? spawnPoint.x;
+  player.y = data.playerY ?? spawnPoint.y;
+
+  spawnCreatures();
+  spawnGuardian();
+}
+
+/* =========================================================
+   PHASE 2 — MUSIC HOOKS
+   ========================================================= */
+
+let currentMusic = null;
+let musicFade = 0;
+
+function switchMusic(type) {
+  musicFade = -1;
+
+  setTimeout(() => {
+    currentMusic = type;
+    musicFade = 1;
+  }, 500);
+}
+
+function updateMusic() {
+  // placeholder fade logic
+}
+
+/* =========================================================
+   DRAW CREATURES
+   ========================================================= */
+
 function drawCreature(c) {
   ctx.save();
   ctx.translate(c.x, c.y);
@@ -238,7 +334,10 @@ function drawCreature(c) {
   ctx.restore();
 }
 
-// DRAW GUARDIANS (peaceful bosses)
+/* =========================================================
+   DRAW GUARDIANS
+   ========================================================= */
+
 function drawGuardian(g) {
   ctx.save();
   ctx.translate(g.x, g.y + Math.sin(Date.now() / 1000 + g.floatOffset) * 10);
@@ -274,7 +373,90 @@ function drawGuardian(g) {
   ctx.restore();
 }
 
-// UPDATE CREATURES
+/* =========================================================
+   DRAW PLAYER
+   ========================================================= */
+
+function drawPlayer() {
+  ctx.save();
+
+  let bob = Math.sin(Date.now() / 200) * 2;
+  let stretch = 1 + Math.sin(Date.now() / 120) * 0.05;
+
+  ctx.translate(player.x, player.y + bob);
+  ctx.scale(stretch, 1);
+
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
+  ctx.beginPath();
+  ctx.ellipse(0, 25, 28, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.shadowColor = "#ffa866";
+  ctx.shadowBlur = 25;
+
+  ctx.fillStyle = "#ff8c42";
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 25, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.shadowBlur = 0;
+
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  ctx.fillStyle = "#ff8c42";
+  ctx.beginPath();
+  ctx.ellipse(0, -22, 16, 14, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(-10, -28);
+  ctx.lineTo(-4, -40);
+  ctx.lineTo(2, -28);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(10, -28);
+  ctx.lineTo(4, -40);
+  ctx.lineTo(-2, -28);
+  ctx.fill();
+
+  ctx.fillStyle = "#ffb46a";
+  ctx.beginPath();
+  ctx.ellipse(-30, 5, 20, 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/* =========================================================
+   DRAW OBSTACLES
+   ========================================================= */
+
+function drawObstacle(o) {
+  ctx.save();
+
+  ctx.fillStyle = "rgba(0,0,0,0.4)";
+  ctx.fillRect(o.x + 10, o.y + o.h, o.w, 10);
+
+  ctx.fillStyle = "#3a4a63";
+  ctx.fillRect(o.x, o.y, o.w, o.h);
+
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = 3;
+  ctx.strokeRect(o.x, o.y, o.w, o.h);
+
+  ctx.fillStyle = "rgba(255,255,255,0.15)";
+  ctx.fillRect(o.x, o.y, o.w, 8);
+
+  ctx.restore();
+}
+
+/* =========================================================
+   UPDATE CREATURES / PARTICLES / OBSTACLES
+   ========================================================= */
+
 function updateCreatures() {
   for (let c of creatures) {
     c.x += c.vx;
@@ -287,7 +469,6 @@ function updateCreatures() {
   }
 }
 
-// UPDATE PARTICLES
 function updateParticles() {
   for (let i = particles.length - 1; i >= 0; i--) {
     let p = particles[i];
@@ -299,7 +480,6 @@ function updateParticles() {
   }
 }
 
-// DRAW PARTICLES
 function drawParticles() {
   for (let p of particles) {
     ctx.fillStyle = `rgba(255,255,255,${p.alpha})`;
@@ -309,29 +489,84 @@ function drawParticles() {
   }
 }
 
-// DRAW FOG LAYER
 function drawFog() {
   let realm = realms[currentRealm];
   ctx.fillStyle = realm.fog;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
-// UPDATE OBSTACLES + REALM SWITCHING (already in PART 1)
+function updateObstacles() {
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    const o = obstacles[i];
 
-// DRAW EVERYTHING
+    o.x -= worldSpeed;
+
+    if (o.type === "moving") {
+      o.x += o.vx * Math.sin(Date.now() / 500);
+    }
+
+    if (o.x + o.w < 0) {
+      obstacles.splice(i, 1);
+      continue;
+    }
+
+    const px = player.x - player.hitbox.w / 2;
+    const py = player.y - player.hitbox.h / 2;
+    const pw = player.hitbox.w;
+    const ph = player.hitbox.h;
+
+    if (
+      px < o.x + o.w &&
+      px + pw > o.x &&
+      py < o.y + o.h &&
+      py + ph > o.y
+    ) {
+      gameState = "gameover";
+    }
+  }
+}
+
+/* =========================================================
+   BACKGROUND UPDATE
+   ========================================================= */
+
+function updateBackground() {
+  for (let s of stars) {
+    s.x += s.speed;
+    if (s.x > canvas.width) {
+      s.x = 0;
+      s.y = Math.random() * canvas.height;
+    }
+  }
+
+  for (let cloud of clouds) {
+    cloud.x += cloud.speed;
+    if (cloud.x > canvas.width + cloud.w) {
+      cloud.x = -cloud.w;
+      cloud.y = Math.random() * canvas.height;
+    }
+  }
+
+  for (let island of islands) {
+    island.x += Math.sin(Date.now() / 2000) * 0.1;
+  }
+}
+
+/* =========================================================
+   DRAW EVERYTHING
+   ========================================================= */
+
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   let realm = realms[currentRealm];
 
-  // background gradient
   let gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
   gradient.addColorStop(0, realm.top);
   gradient.addColorStop(1, realm.bottom);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // clouds
   for (let cloud of clouds) {
     ctx.fillStyle = `rgba(255, 255, 255, ${cloud.opacity})`;
     ctx.beginPath();
@@ -339,7 +574,6 @@ function draw() {
     ctx.fill();
   }
 
-  // islands
   for (let island of islands) {
     ctx.fillStyle = "#ffffff22";
     let depthScale = island.y / canvas.height;
@@ -358,7 +592,6 @@ function draw() {
     ctx.fill();
   }
 
-  // stars
   for (let s of stars) {
     ctx.fillStyle = "#ffffff";
     ctx.beginPath();
@@ -366,29 +599,22 @@ function draw() {
     ctx.fill();
   }
 
-  // fog layer
   drawFog();
 
-  // ambient creatures
   for (let c of creatures) drawCreature(c);
-
-  // guardian
   for (let g of guardians) drawGuardian(g);
 
-  // ground
   ctx.fillStyle = "#2e3b55";
   ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, GROUND_HEIGHT);
 
-  // obstacles
   for (let o of obstacles) drawObstacle(o);
 
-  // particles
   drawParticles();
 
-  // player
   drawPlayer();
 
-  // UI
+  drawMiniMap();
+
   ctx.fillStyle = "#e5e7eb";
   ctx.font = "20px system-ui, sans-serif";
   ctx.textAlign = "left";
@@ -409,13 +635,15 @@ function draw() {
   }
 }
 
-// UPDATE EVERYTHING
+/* =========================================================
+   UPDATE EVERYTHING
+   ========================================================= */
+
 function update() {
   updateBackground();
 
   if (gameState !== "play") return;
 
-  // movement
   player.vy += GRAVITY;
 
   if (keys["a"]) player.vx -= player.speed;
@@ -437,13 +665,13 @@ function update() {
     player.onGround = true;
   }
 
-  // realm switching
   if (player.x > canvas.width - 50) {
     currentRealm = (currentRealm + 1) % realms.length;
     player.x = 60;
     obstacles = [];
     spawnCreatures();
     spawnGuardian();
+    switchMusic("realm");
   }
 
   if (player.x < 50) {
@@ -452,26 +680,30 @@ function update() {
     obstacles = [];
     spawnCreatures();
     spawnGuardian();
+    switchMusic("realm");
   }
 
-  // difficulty
   difficultyTimer += 1;
   if (difficultyTimer % 180 === 0) worldSpeed += 0.4;
 
-  // spawn obstacles
   if (Math.random() < 0.02) spawnObstacle();
 
   updateObstacles();
   updateCreatures();
   updateParticles();
+  updateMusic();
 
-  // spawn particle trail
   spawnParticle();
 
   score += 0.1;
+
+  saveGame();
 }
 
-// GAME LOOP
+/* =========================================================
+   GAME LOOP
+   ========================================================= */
+
 function gameLoop() {
   update();
   draw();
@@ -480,4 +712,5 @@ function gameLoop() {
 
 spawnCreatures();
 spawnGuardian();
+loadGame();
 gameLoop();
