@@ -137,11 +137,15 @@ let islands = [
 
 // OBSTACLES
 let obstacles = [0];
-let obstacleCooldown = 0;
+let obstacleCooldown = 90; // 1.5 seconds
+
 function spawnObstacle() {
-  const groundY = canvas.height - GROUND_HEIGHT;
-  const w = 40 + Math.random() * 40;
-  const h = 40 + Math.random() * 30;
+  if (obstacleCooldown <= 0 && Math.random() < 0.02) {
+  spawnObstacle();
+  obstacleCooldown = 60; // 1 second cooldown at 60 FPS
+}
+
+obstacleCooldown--;
 
   const moving = Math.random() < 0.4;
 
