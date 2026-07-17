@@ -684,9 +684,9 @@ function update() {
   }
 
   difficultyTimer += 1;
-  if (difficultyTimer % 180 === 0) worldSpeed += 0.4;
+  if (difficultyTimer % 180 === 0) worldSpeed += 0.04;
 
-  if (Math.random() < 0.02) spawnObstacle();
+  if (Math.random() < 0.002) spawnObstacle();
 
   updateObstacles();
   updateCreatures();
@@ -695,7 +695,7 @@ function update() {
 
   spawnParticle();
 
-  score += 0.1;
+  score += 0.01;
 
   saveGame();
 }
