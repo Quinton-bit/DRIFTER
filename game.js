@@ -136,8 +136,8 @@ let islands = [
 ];
 
 // OBSTACLES
-let obstacles = [];
-
+let obstacles = [0];
+let obstacleCooldown = 0;
 function spawnObstacle() {
   const groundY = canvas.height - GROUND_HEIGHT;
   const w = 40 + Math.random() * 40;
@@ -686,7 +686,12 @@ function update() {
   difficultyTimer += 1;
   if (difficultyTimer % 180 === 0) worldSpeed += 0.04;
 
-  if (Math.random() < 0.002) spawnObstacle();
+ if (obstacleCooldown <= 0 && Math.random() < 0.02) {
+  spawnObstacle();
+  obstacleCooldown = 60; // 60 frames = 1 second cooldown
+}
+
+obstacleCooldown--;
 
   updateObstacles();
   updateCreatures();
