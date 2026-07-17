@@ -462,11 +462,6 @@ function updateCreatures() {
     c.x += c.vx;
     c.y += c.vy;
 
-     function updateCreatures() {
-  for (let c of creatures) {
-    c.x += c.vx;
-    c.y += c.vy;
-
     if (c.x < -50) c.x = canvas.width + 50;
     if (c.x > canvas.width + 50) c.x = -50;
     if (c.y < 50) c.y = canvas.height - 200;
@@ -713,9 +708,10 @@ function gameLoop() {
   update();
   draw();
   requestAnimationFrame(gameLoop);
-}
+
 
 spawnCreatures();
 spawnGuardian();
 loadGame();
-gameLoop();
+gameLoop()
+}
